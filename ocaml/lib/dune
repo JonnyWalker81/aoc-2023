@@ -1,0 +1,8 @@
+(library
+ (name ocaml)
+  (libraries
+   core
+   fmt
+   str
+   )
+)

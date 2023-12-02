@@ -1,0 +1,9 @@
+(executable
+ (public_name ocaml)
+ (name main)
+  (modes byte exe)
+ (libraries
+   ocaml fmt core sexplib str
+)
+ (flags (:standard -w -11 -open Sexplib.Std))
+)

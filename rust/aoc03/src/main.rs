@@ -104,7 +104,7 @@ fn part1(input: &str) -> Result<()> {
         let mut num = String::new();
         let mut part_number = PartNumber::default();
         for (col, c) in l.chars().enumerate() {
-            if c.is_digit(10) {
+            if c.is_ascii_digit() {
                 num.push(c);
                 part_number.locations.insert((r, col));
                 // row.push(c);
@@ -112,7 +112,7 @@ fn part1(input: &str) -> Result<()> {
                 if !num.is_empty() {
                     part_number.num = num.parse::<u32>().unwrap();
                     // let cell = CellKind::Number(part_number.clone());
-                    let neighbors = neighbors(r, col);
+                    let neighbors = neighbors(r, col, &part_number.locations);
                     part_number.locations.extend(neighbors);
                     part_numbers.push(part_number.clone());
                     // row.push(cell);
@@ -128,14 +128,19 @@ fn part1(input: &str) -> Result<()> {
         // grid.push(row);
     }
 
-    println!("{:?}", part_numbers);
-    println!("{:?}", symbols);
+    // println!("{:?}", part_numbers);
+    // println!("{:?}", symbols);
 
+    let mut parts = vec![];
     for p in part_numbers {
-        if let Some(_) = p.locations.intersection(&symbols).next() {
+        if p.locations.intersection(&symbols).next().is_some() {
             println!("{:?}", p.num);
+            parts.push(p.num);
         }
     }
+
+    let sum: u32 = parts.iter().sum();
+    println!("{}", sum);
 
     // println!("{:?}", grid);
     // for x in 0..grid.len() {
@@ -163,7 +168,7 @@ fn part1(input: &str) -> Result<()> {
     Ok(())
 }
 
-fn neighbors(row: usize, col: usize) -> Vec<(usize, usize)> {
+fn neighbors(row: usize, col: usize, locations: &HashSet<(usize, usize)>) -> Vec<(usize, usize)> {
     let dirs = vec![
         (-1, -1),
         (-1, 0),
@@ -179,20 +184,22 @@ fn neighbors(row: usize, col: usize) -> Vec<(usize, usize)> {
     // for y in 0..grid[x].len() {
     // let dirs = dirs.clone();
     let mut neighbors = vec![];
-    for d in dirs {
-        let dr = row as i32 + d.0;
-        let dc = col as i32 + d.1;
+    for l in locations {
+        for d in &dirs {
+            let dr = l.0 as i32 + d.0;
+            let dc = l.1 as i32 + d.1;
 
-        // if dr < 0 || dc < 0 || dr >= grid.len() as i32 || dc >= grid[dr as usize].len() as i32 {
-        if dr < 0 || dc < 0 {
-            continue;
+            // if dr < 0 || dc < 0 || dr >= grid.len() as i32 || dc >= grid[dr as usize].len() as i32 {
+            if dr < 0 || dc < 0 {
+                continue;
+            }
+
+            neighbors.push((dr as usize, dc as usize));
+            // if grid[dr as usize][dc as usize].is_symbol() {
+            //     println!("({}, {})  ->  {:?}", dr, dc, grid[dr as usize][dc as usize]);
+            //     return true;
+            // }
         }
-
-        neighbors.push((dr as usize, dc as usize));
-        // if grid[dr as usize][dc as usize].is_symbol() {
-        //     println!("({}, {})  ->  {:?}", dr, dc, grid[dr as usize][dc as usize]);
-        //     return true;
-        // }
     }
     // }
     // }

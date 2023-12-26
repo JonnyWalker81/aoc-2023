@@ -46,5 +46,5 @@ in pkgs.mkShell {
     # jingoo
   ];
   # dependencies
-  buildInputs = with ocamlPackages; [ ocamlgraph pkgs.ocamlformat ];
+  buildInputs = with ocamlPackages; [ ocamlgraph pkgs.ocamlformat pkgs.nodejs pkgs.yarn ];
 }

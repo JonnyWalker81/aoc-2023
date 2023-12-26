@@ -92,6 +92,9 @@ fn part2(input: &str) -> Result<()> {
     });
 
     // println!("{:#?}", hands);
+    // for h in hands.iter() {
+    //     println!("{} - {:?}", h.hand, get_hand_value2(&h.hand));
+    // }
 
     let sum = hands
         .iter()
@@ -134,7 +137,7 @@ fn value_to_card(value: u32) -> char {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 enum HandValue {
     HighCard = 0,
     OnePair = 1,
@@ -185,24 +188,58 @@ fn get_hand_value2(hand: &str) -> HandValue {
         values.entry(c).and_modify(|v| *v += 1).or_insert(1);
     }
 
-    let highest_value = values.iter().map(|(k, _)| card_value2(*k)).max().unwrap();
-    let highest_card = value_to_card(highest_value);
+    // let highest_value = values.iter().map(|(k, _)| card_value2(*k)).max().unwrap();
+    // let highest_card = value_to_card(highest_value);
 
     let joker_count = values.get(&'J').unwrap_or(&0).clone();
-    values.entry(highest_card).and_modify(|v| *v += joker_count);
-    values.remove(&'J');
+    // values.entry(highest_card).and_modify(|v| *v += joker_count);
+    // values.remove(&'J');
 
-    let sum = values.values().sum::<u32>();
-    if sum < 5 || *values.get(&'J').unwrap_or(&0) == 4 {
-        println!(
-            "{highest_card} - {highest_card} - {joker_count} - {hand} -> sum: {}",
-            sum
-        );
-    }
+    // let sum = values.values().sum::<u32>();
+    // if sum < 5 || *values.get(&'J').unwrap_or(&0) == 4 {
+    //     println!(
+    //         "{highest_card} - {highest_card} - {joker_count} - {hand} -> sum: {}",
+    //         sum
+    //     );
+    // }
 
-    if values.is_empty() {
+    if joker_count == 5 {
         println!("empty values, all Jokers");
         return HandValue::FiveOfAKind;
+    }
+
+    if joker_count == 4 {
+        return HandValue::FiveOfAKind;
+    }
+
+    if joker_count == 3 {
+        return HandValue::FourOfAKind;
+    }
+
+    if joker_count == 2 {
+        if values.values().filter(|v| **v == 2).count() == 1 {
+            return HandValue::FourOfAKind;
+        }
+
+        if values.values().filter(|v| **v == 3).count() == 1 {
+            return HandValue::FiveOfAKind;
+        }
+
+        return HandValue::ThreeOfAKind;
+    }
+
+    if joker_count == 1 {
+        if values.values().filter(|v| **v == 2).count() == 1 {
+            return HandValue::ThreeOfAKind;
+        }
+
+        if values.values().filter(|v| **v == 3).count() == 1 {
+            return HandValue::FullHouse;
+        }
+
+        if values.values().all(|v| *v == 1) {
+            return HandValue::OnePair;
+        }
     }
 
     if values.values().any(|v| *v == 5) {

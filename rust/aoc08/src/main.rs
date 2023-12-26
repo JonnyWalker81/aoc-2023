@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    // part1(&input)?;
+    part1(&input)?;
     part2(&input)?;
 
     Ok(())
@@ -31,8 +31,6 @@ fn part1(input: &str) -> Result<()> {
             (node, (left, right))
         })
         .collect::<HashMap<_, _>>();
-
-    // println!("{:?}", mapping);
 
     let mut current = mapping.get("AAA").unwrap();
     let mut count = 0;
@@ -84,87 +82,82 @@ fn part2(input: &str) -> Result<()> {
         .filter(|k| k.ends_with('A'))
         .collect::<Vec<_>>();
 
-    // println!("{:?}", all_as);
-
-    let mut current: HashMap<String, (String, String)> = HashMap::new();
-    let mut count = 0;
-
-    let mut found: HashMap<String, String> = HashMap::new();
+    let mut found: HashMap<String, usize> = HashMap::new();
     for a in &all_as {
-        let c = mapping.get(*a).unwrap();
-        let cur = (c.0.to_string(), c.1.to_string());
-        current
-            .entry(a.to_string())
-            .and_modify(|v| *v = cur.into())
-            .or_insert(cur.into());
-        found.entry(a.to_string()).or_insert(cur.0.to_string());
-    }
+        let mut count = 0;
+        let mut current = mapping.get(&a.to_string()).unwrap();
 
-    loop {
-        // let arr = all_as.clone();
-        // println!("{:?}", current);
-        // break;
-
-        for i in instructions.chars() {
-            for a in &all_as {
+        'outer: loop {
+            for i in instructions.chars() {
                 count += 1;
                 match i {
                     'R' => {
-                        // if current.get(&a).unwrap().1.ends_with('Z') {
-                        if let Some((left, right)) = current.get(&a.to_string()).clone() {
-                            if right.ends_with('Z') {
-                                found
-                                    .entry(right.to_string())
-                                    .and_modify(|v| *v = right.to_string());
-                                break;
-                            }
-                            // println!("Found it: {count}");
-                            // break 'outer ();
-                            current.entry(a.to_string()).and_modify(|vv| {
-                                let l = left.clone();
-                                let r = right.clone();
-                                *vv = (l, r);
-                            });
+                        if current.1.ends_with('Z') {
+                            println!("Found it (right): {count}");
+                            found
+                                .entry(current.1.to_string())
+                                .and_modify(|v| *v = count)
+                                .or_insert(count);
+                            break 'outer ();
                         }
-                        // current = mapping.get(current.1).unwrap();
+                        current = mapping.get(&current.1).unwrap();
                     }
                     'L' => {
-                        // if current.get(&a).unwrap().0.ends_with('Z') {
-                        if let Some((left, _)) = current.get(&a.to_string()).clone() {
-                            if left.ends_with('Z') {
-                                // found.insert(a.to_string(), v.to_string());
-                                found
-                                    .entry(left.to_string())
-                                    .and_modify(|v| *v = left.to_string());
-                                break;
-                            }
-
-                            current.entry(a.to_string()).and_modify(|vv| {
-                                let t = mapping.get(&left.to_string()).unwrap();
-                                let l = t.0.to_string();
-                                let r = t.1.to_string();
-                                *vv = (l, r);
-                            });
+                        if current.0.ends_with('Z') {
+                            println!("Found it (left): {count}");
+                            found
+                                .entry(current.0.to_string())
+                                .and_modify(|v| *v = count)
+                                .or_insert(count);
+                            break 'outer ();
                         }
-                        // println!("Found it: {count}");
-                        // }
-
-                        // current
-                        //     .entry(&a)
-                        //     .and_modify(|v| *v = mapping.get(v.0).unwrap());
-                        // current = mapping.get(current.0).unwrap();
+                        current = mapping.get(&current.0).unwrap();
                     }
                     _ => panic!("Unknown instruction"),
                 }
             }
         }
-
-        println!("{:?}", found);
-        if found.values().all(|v| v.ends_with('Z')) {
-            break;
-        }
     }
 
-    println!("{:?}", count);
+    println!("{:?}", found);
+
+    let numbers = found.values().map(|v| *v as u64).collect::<Vec<_>>();
+    let lcm = lcm(numbers);
+
+    println!("{:?}", lcm);
     Ok(())
+}
+
+// https://www.andyloree.com/blog/2022/12/11/least-common-multiple-vect-rust/
+fn lcm(numbers: Vec<u64>) -> u64 {
+    let mut temp = numbers.clone();
+
+    // check all the same
+    loop {
+        let mut same = true;
+
+        for idx in 1..temp.len() {
+            if temp[0] != temp[idx] {
+                same = false;
+                break;
+            }
+        }
+
+        if same {
+            return temp[0];
+        }
+
+        // Find lowest index
+        match temp
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| a.cmp(b))
+            .map(|(index, _)| index)
+        {
+            Some(idx) => {
+                temp[idx] = temp[idx] + numbers[idx];
+            }
+            None => panic!("Not possible"),
+        }
+    }
 }

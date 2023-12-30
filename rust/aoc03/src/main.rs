@@ -98,6 +98,22 @@ fn part1(input: &str) -> Result<()> {
     let mut part_numbers = vec![];
     let mut symbols: HashSet<(usize, usize)> = HashSet::new();
 
+    let mut count = 0;
+    let grid: Vec<Vec<char>> = lines
+        .iter()
+        .map(|l| {
+            for c in l.chars() {
+                if !c.is_ascii_digit() && c != '.' {
+                    // println!("{}", c);
+                    count += 1;
+                }
+            }
+            l.chars().collect()
+        })
+        .collect();
+
+    println!("{}", count);
+
     // let mut grid: Vec<Vec<CellKind>> = vec![vec![]];
     for (r, l) in lines.iter().enumerate() {
         // let mut row = vec![];
@@ -112,7 +128,7 @@ fn part1(input: &str) -> Result<()> {
                 if !num.is_empty() {
                     part_number.num = num.parse::<u32>().unwrap();
                     // let cell = CellKind::Number(part_number.clone());
-                    let neighbors = neighbors(r, col, &part_number.locations);
+                    let neighbors = neighbors(&grid, r, col, &part_number.locations);
                     part_number.locations.extend(neighbors);
                     part_numbers.push(part_number.clone());
                     // row.push(cell);
@@ -120,6 +136,7 @@ fn part1(input: &str) -> Result<()> {
                     part_number = PartNumber::default();
                 }
                 if c != '.' {
+                    // println!("{}", grid[r][col]);
                     symbols.insert((r, col));
                 }
                 // row.push(c.into());
@@ -128,18 +145,22 @@ fn part1(input: &str) -> Result<()> {
         // grid.push(row);
     }
 
-    // println!("{:?}", part_numbers);
-    // println!("{:?}", symbols);
+    // println!("parts: {:?}", part_numbers);
+    println!("symbols: {:?}", symbols.len());
 
-    let mut parts = vec![];
+    let mut sum = 0;
+    let mut numbers = HashSet::new();
     for p in part_numbers {
-        if p.locations.intersection(&symbols).next().is_some() {
-            println!("{:?}", p.num);
-            parts.push(p.num);
+        let i = p.locations.intersection(&symbols).collect::<Vec<_>>();
+        // println!("{:?}", i.len());
+        if i.len() > 0 {
+            sum += p.num;
+            if !numbers.insert(p.num) {
+                println!("{}: {:?}", p.num, i);
+            }
         }
     }
 
-    let sum: u32 = parts.iter().sum();
     println!("{}", sum);
 
     // println!("{:?}", grid);
@@ -168,16 +189,21 @@ fn part1(input: &str) -> Result<()> {
     Ok(())
 }
 
-fn neighbors(row: usize, col: usize, locations: &HashSet<(usize, usize)>) -> Vec<(usize, usize)> {
+fn neighbors(
+    grid: &Vec<Vec<char>>,
+    row: usize,
+    col: usize,
+    locations: &HashSet<(usize, usize)>,
+) -> Vec<(usize, usize)> {
     let dirs = vec![
-        (-1, -1),
-        (-1, 0),
-        (-1, 1),
-        (0, -1),
-        (0, 1),
-        (1, -1),
-        (1, 0),
-        (1, 1),
+        (-1, -1), // up-left
+        (-1, 0),  // up
+        (-1, 1),  // up-right
+        (0, -1),  // left
+        (0, 1),   // right
+        (1, -1),  // down-left
+        (1, 0),   // down
+        (1, 1),   // down-right
     ];
 
     // for x in 0..grid.len() {
@@ -190,7 +216,7 @@ fn neighbors(row: usize, col: usize, locations: &HashSet<(usize, usize)>) -> Vec
             let dc = l.1 as i32 + d.1;
 
             // if dr < 0 || dc < 0 || dr >= grid.len() as i32 || dc >= grid[dr as usize].len() as i32 {
-            if dr < 0 || dc < 0 {
+            if dr < 0 || dc < 0 || dr >= grid.len() as i32 || dc >= grid[0].len() as i32 {
                 continue;
             }
 

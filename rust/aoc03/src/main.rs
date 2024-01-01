@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     fmt::{self, Display, Formatter},
     io::{self, Read},
 };
@@ -11,27 +11,53 @@ fn main() -> Result<()> {
     io::stdin().read_to_string(&mut input)?;
 
     part1(&input)?;
-    // part2(&input)?;
+    part2(&input)?;
 
     Ok(())
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct PartNumber {
-    num: u32,
-    locations: HashSet<(usize, usize)>,
+    points: HashSet<(i64, i64)>,
+    value: i64,
+}
+
+impl PartNumber {
+    fn new(row: i64, col: i64, ch: char) -> Self {
+        let mut points = HashSet::from([
+            (row - 1, col - 1),
+            (row, col - 1),
+            (row + 1, col - 1),
+            (row - 1, col),
+            (row + 1, col),
+            (row - 1, col + 1),
+            (row, col + 1),
+            (row + 1, col + 1),
+        ]);
+        Self {
+            points,
+            value: (ch as u8 - b'0') as i64,
+        }
+    }
+
+    fn add_digit(&mut self, row: i64, col: i64, ch: char) {
+        self.value *= 10;
+        self.value += (ch as u8 - b'0') as i64;
+        self.points
+            .extend([(row - 1, col + 1), (row, col + 1), (row + 1, col + 1)]);
+    }
 }
 
 impl Display for PartNumber {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.num)
+        write!(f, "{:?}", self.points)
     }
 }
 
 #[derive(Debug, Default, Clone)]
 enum CellKind {
-    Number(PartNumber),
-    Symbol(char, (usize, usize)),
+    Number(u32),
+    Symbol(char),
     #[default]
     Empty,
 }
@@ -40,7 +66,7 @@ impl Display for CellKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             CellKind::Number(n) => write!(f, "{}", n),
-            CellKind::Symbol(s, _) => write!(f, "{}", s),
+            CellKind::Symbol(s) => write!(f, "{}", s),
             CellKind::Empty => write!(f, "."),
         }
     }
@@ -96,72 +122,154 @@ impl Display for CellKind {
 fn part1(input: &str) -> Result<()> {
     let lines: Vec<&str> = input.trim().split('\n').collect();
     let mut part_numbers = vec![];
-    let mut symbols: HashSet<(usize, usize)> = HashSet::new();
+    let mut symbols: HashSet<(i64, i64)> = HashSet::new();
 
-    let mut count = 0;
-    let grid: Vec<Vec<char>> = lines
-        .iter()
-        .map(|l| {
-            for c in l.chars() {
-                if !c.is_ascii_digit() && c != '.' {
-                    // println!("{}", c);
-                    count += 1;
-                }
-            }
-            l.chars().collect()
-        })
-        .collect();
-
-    println!("{}", count);
-
-    // let mut grid: Vec<Vec<CellKind>> = vec![vec![]];
-    for (r, l) in lines.iter().enumerate() {
-        // let mut row = vec![];
+    let mut cur_number: Option<PartNumber> = None;
+    for (r, line) in lines.iter().enumerate() {
         let mut num = String::new();
         let mut part_number = PartNumber::default();
-        for (col, c) in l.chars().enumerate() {
-            if c.is_ascii_digit() {
-                num.push(c);
-                part_number.locations.insert((r, col));
-                // row.push(c);
+        for (c, ch) in line.chars().enumerate() {
+            if ch.is_ascii_digit() {
+                if let Some(ref mut num) = cur_number {
+                    num.add_digit(r as i64, c as i64, ch);
+                } else {
+                    cur_number = Some(PartNumber::new(r as i64, c as i64, ch));
+                }
             } else {
-                if !num.is_empty() {
-                    part_number.num = num.parse::<u32>().unwrap();
-                    // let cell = CellKind::Number(part_number.clone());
-                    let neighbors = neighbors(&grid, r, col, &part_number.locations);
-                    part_number.locations.extend(neighbors);
-                    part_numbers.push(part_number.clone());
-                    // row.push(cell);
-                    num.clear();
-                    part_number = PartNumber::default();
+                if let Some(num) = cur_number.take() {
+                    part_numbers.push(num);
+                    cur_number = None;
                 }
-                if c != '.' {
-                    // println!("{}", grid[r][col]);
-                    symbols.insert((r, col));
+                if ch != '.' {
+                    symbols.insert((r as i64, c as i64));
                 }
-                // row.push(c.into());
             }
         }
-        // grid.push(row);
     }
 
-    // println!("parts: {:?}", part_numbers);
-    println!("symbols: {:?}", symbols.len());
+    // println!("symbols: {:?}", part_numbers);
 
     let mut sum = 0;
-    let mut numbers = HashSet::new();
     for p in part_numbers {
-        let i = p.locations.intersection(&symbols).collect::<Vec<_>>();
+        let i = p.points.intersection(&symbols).collect::<Vec<_>>();
         // println!("{:?}", i.len());
         if i.len() > 0 {
-            sum += p.num;
-            if !numbers.insert(p.num) {
-                println!("{}: {:?}", p.num, i);
-            }
+            sum += p.value;
+            // if !numbers.insert(p.num) {
+            // println!("{}: {:?}", p.num, i);
+            // }
         }
     }
 
     println!("{}", sum);
+
+    // let grid = lines
+    //     .iter()
+    //     .enumerate()
+    //     .flat_map(|(r, l)| {
+    //         l.chars().enumerate().map(move |(c, ch)| {
+    //             (
+    //                 (r, c),
+    //                 match ch {
+    //                     '.' => CellKind::Empty,
+    //                     cc if cc.is_ascii_digit() => {
+    //                         CellKind::Number(cc.to_digit(10).unwrap() as u32)
+    //                     }
+    //                     cc => CellKind::Symbol(cc),
+    //                 },
+    //             )
+    //         })
+    //     })
+    //     .collect::<BTreeMap<(usize, usize), CellKind>>();
+
+    // // println!("{:?}", grid);
+    // let mut numbers = HashSet::new();
+
+    // for ((r, c), cell) in &grid {
+    //     match cell {
+    //         CellKind::Number(_) => {
+    //             numbers.insert((*r, *c));
+    //         }
+    //         CellKind::Symbol(_) => {
+    //             symbols.insert((*r, *c));
+    //         }
+    //         _ => {}
+    //     }
+    // }
+
+    // println!("{:?}", numbers.len());
+    // println!("{:?}", symbols.len());
+    // let i = numbers.intersection(&symbols).collect::<Vec<_>>();
+    // println!("{:?}", i.len());
+
+    // let mut numbers = vec![];
+    // for ((r, c), cell) in grid.iter() {
+    //     if let CellKind::Number(n) = cell {
+    //         // println!("({}, {}) -> {}", r, c, n);
+    //         match numbers.iter().last() {
+    //             Some(v) => {
+    //                 let last_num = v.iter().last();
+    //                 match last_num {
+    //                     Some(((last_num_x, _), _)) => todo!(),
+    //                     None => todo!(),
+    //                 }
+    //             }
+    //             None => {
+    //                 numbers.push(vec![((*r, *c), *n)]);
+    //             }
+    //         }
+    //         numbers.push((r, c, n));
+    //     }
+    // }
+
+    // let mut grid: Vec<Vec<CellKind>> = vec![vec![]];
+    // for (r, l) in lines.iter().enumerate() {
+    //     // let mut row = vec![];
+    //     let mut num = String::new();
+    //     let mut part_number = PartNumber::default();
+    //     for (col, c) in l.chars().enumerate() {
+    //         if c.is_ascii_digit() {
+    //             num.push(c);
+    //             part_number.locations.insert((r, col));
+    //             // row.push(c);
+    //         } else {
+    //             if !num.is_empty() {
+    //                 part_number.num = num.parse::<u32>().unwrap();
+    //                 // let cell = CellKind::Number(part_number.clone());
+    //                 let neighbors = neighbors(&grid, r, col, &part_number.locations);
+    //                 part_number.locations.extend(neighbors);
+    //                 part_numbers.push(part_number.clone());
+    //                 // row.push(cell);
+    //                 num.clear();
+    //                 part_number = PartNumber::default();
+    //             }
+    //             if c != '.' {
+    //                 // println!("{}", grid[r][col]);
+    //                 symbols.insert((r, col));
+    //             }
+    //             // row.push(c.into());
+    //         }
+    //     }
+    //     // grid.push(row);
+    // }
+
+    // // println!("parts: {:?}", part_numbers);
+    // println!("symbols: {:?}", symbols.len());
+
+    // let mut sum = 0;
+    // let mut numbers = HashSet::new();
+    // for p in part_numbers {
+    //     let i = p.locations.intersection(&symbols).collect::<Vec<_>>();
+    //     // println!("{:?}", i.len());
+    //     if i.len() > 0 {
+    //         sum += p.num;
+    //         if !numbers.insert(p.num) {
+    //             println!("{}: {:?}", p.num, i);
+    //         }
+    //     }
+    // }
+
+    // println!("{}", sum);
 
     // println!("{:?}", grid);
     // for x in 0..grid.len() {
@@ -232,4 +340,58 @@ fn neighbors(
     // }
 
     return neighbors;
+}
+
+fn part2(input: &str) -> Result<()> {
+    let lines: Vec<&str> = input.trim().split('\n').collect();
+    let mut part_numbers = vec![];
+    let mut symbols: HashSet<(i64, i64, char)> = HashSet::new();
+
+    let mut cur_number: Option<PartNumber> = None;
+    for (r, line) in lines.iter().enumerate() {
+        for (c, ch) in line.chars().enumerate() {
+            if ch.is_ascii_digit() {
+                if let Some(ref mut num) = cur_number {
+                    num.add_digit(r as i64, c as i64, ch);
+                } else {
+                    cur_number = Some(PartNumber::new(r as i64, c as i64, ch));
+                }
+            } else {
+                if let Some(num) = cur_number.take() {
+                    part_numbers.push(num);
+                    cur_number = None;
+                }
+                if ch != '.' {
+                    symbols.insert((r as i64, c as i64, ch));
+                }
+            }
+        }
+    }
+
+    let gears = symbols
+        .iter()
+        .filter(|(r, c, ch)| *ch == '*')
+        .map(|(r, c, _)| (*r, *c))
+        .collect::<HashSet<_>>();
+
+    let mut sum = 0;
+    for g in gears {
+        let mut found_gears = Vec::new();
+        for p in &part_numbers {
+            let g = HashSet::from([g]);
+            let i = p.points.intersection(&g).collect::<Vec<_>>();
+
+            if i.len() > 0 {
+                found_gears.push(p.value);
+            }
+        }
+        if found_gears.len() == 2 {
+            let prod = found_gears.iter().product::<i64>();
+            sum += prod;
+        }
+    }
+
+    println!("{}", sum);
+
+    Ok(())
 }

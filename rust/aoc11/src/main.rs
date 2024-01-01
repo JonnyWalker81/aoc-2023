@@ -116,102 +116,75 @@ fn part1(input: &str) -> Result<()> {
 }
 
 fn part2(input: &str) -> Result<()> {
-    let mut grid: Vec<Vec<char>> = input
-        .trim()
-        .split('\n')
-        .map(|l| l.chars().collect())
-        .collect();
+    let lines = input.trim().lines().collect::<Vec<_>>();
+    let mut row_offset = 0;
+    let mut col_has_galaxy = vec![false; lines[0].len()];
+    let mut galaxies = HashSet::new();
+    let mut row_offsets = vec![];
+    let mut col_offsets = vec![];
 
-    print_grid(&grid);
-
-    // check rows
-    let mut empty_rows = vec![];
-    for row in 0..grid.len() {
-        let mut no_galaxies = true;
-        for col in 0..grid[row].len() {
-            if grid[row][col] == '#' {
-                no_galaxies = false;
-                break;
+    for (row, line) in lines.iter().enumerate() {
+        let mut galaxy_spotted = false;
+        for (col, ch) in line.chars().enumerate() {
+            if ch == '#' {
+                galaxies.insert((row as i64, col as i64));
+                galaxy_spotted = true;
+                col_has_galaxy[col] = true;
             }
         }
-        if no_galaxies {
-            empty_rows.push(row);
-            // let r = vec!['.'; grid[row].len()];
-            // grid.insert(row, r);
-            // for row in 0..grid.len() {
-            //     grid[row].insert(idx, '.');
-            // }
+        if !galaxy_spotted {
+            row_offset += 1;
         }
+        row_offsets.push(row_offset);
     }
 
-    for (i, e) in empty_rows.iter().enumerate() {
-        let r = vec!['.'; grid[0].len()];
-        grid.insert(e + i, r);
+    let mut col_offset = 0;
+    for col in col_has_galaxy {
+        if !col {
+            col_offset += 1;
+        }
+        col_offsets.push(col_offset);
     }
 
-    println!();
-
-    print_grid(&grid);
-
-    // check cols
-    let mut empty_cols = vec![];
-    for col in 0..grid[0].len() {
-        let mut no_galaxies = true;
-        for row in 0..grid.len() {
-            if grid[row][col] == '#' {
-                no_galaxies = false;
-                break;
-            }
-        }
-        if no_galaxies {
-            empty_cols.push(col);
-        }
-    }
-
-    println!("{:?}", empty_cols);
-    for (i, e) in empty_cols.iter().enumerate() {
-        for row in 0..grid.len() {
-            grid[row].insert(e + i, '.');
-        }
-    }
-
-    println!();
-
-    print_grid(&grid);
-
-    let mut galaxy_locations = HashMap::new();
-    for row in 0..grid.len() {
-        for col in 0..grid[row].len() {
-            if grid[row][col] == '#' {
-                galaxy_locations.insert(galaxy_locations.len() + 1, (row, col));
-            }
-        }
-    }
-
-    // println!("{:#?}", galaxy_locations);
-
-    let combs = galaxy_locations
-        .iter()
-        .map(|(k, _)| *k)
-        .combinations(2)
-        .collect::<Vec<Vec<usize>>>();
-    // println!("{:?}", combs);
-    println!("combinations: {:?}", combs.len());
-
-    let mut sum = 0;
-    for c in combs {
-        if let Some(v) = galaxy_locations.get(&c[0]) {
-            if let Some(v2) = galaxy_locations.get(&c[1]) {
-                // sum += bfs(*v, *v2, &grid);
-                sum += (v.0 as i32 * 1_000_000 - v2.0 as i32 * 1_000_000).abs() as usize
-                    + (v.1 as i32 * 1_000_000 - v2.1 as i32 * 1_000_000).abs() as usize;
-            }
-        }
-    }
-
-    println!("{}", sum);
-
+    let distance = calculate_distances(&galaxies, &row_offsets, &col_offsets, 1_000_000);
+    println!("{}", distance);
     Ok(())
+}
+
+fn calculate_distances(
+    galaxies: &HashSet<(i64, i64)>,
+    row_offsets: &Vec<i64>,
+    col_offsets: &Vec<i64>,
+    scale: i64,
+) -> i64 {
+    let galaxies = galaxies.iter().collect::<Vec<_>>();
+    let scale = scale - 1;
+    let rows = row_offsets
+        .iter()
+        .map(|row| row * scale)
+        .collect::<Vec<_>>();
+    let cols = col_offsets
+        .iter()
+        .map(|row| row * scale)
+        .collect::<Vec<_>>();
+
+    let mut total_distance = 0;
+    for (i, first) in galaxies.iter().enumerate() {
+        let (irow, icol) = (
+            first.0 + rows[first.0 as usize],
+            first.1 + cols[first.1 as usize],
+        );
+
+        for second in galaxies.iter().skip(i) {
+            let (jrow, jcol) = (
+                second.0 + rows[second.0 as usize],
+                second.1 + cols[second.1 as usize],
+            );
+            total_distance += (irow - jrow).abs() + (icol - jcol).abs();
+        }
+    }
+
+    total_distance
 }
 
 // fn bfs(from: (usize, usize), to: (usize, usize), grid: &Vec<Vec<char>>) -> usize {
